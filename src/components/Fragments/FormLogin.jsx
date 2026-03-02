@@ -1,47 +1,84 @@
 import { useState } from "react";
-import InputForm from "../Elements/Input/index";
+import { useNavigate } from "react-router-dom";
+import { Mail, Lock, Eye, EyeOff } from "lucide-react";
+import InputForm from "../Elements/Input";
 import Button from "../Elements/Button";
+import api from "../../services/api";
+
 const FormLogin = () => {
-  const [remember, setRemember] = useState(false);
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    console.log("Form submitted");
+  const navigate = useNavigate();
+
+  const [form, setForm] = useState({
+    email: "",
+    password: "",
+  });
+
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const handleChange = (e) => {
+    setForm({
+      ...form,
+      [e.target.id]: e.target.value,
+    });
   };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    if (!form.email || !form.password) {
+      alert("Semua field wajib diisi");
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      const { data } = await api.post("/api/auth/login", {
+        email: form.email,
+        password: form.password,
+      });
+
+      localStorage.setItem("token", data.token);
+
+      if (data.user.role === "admin") {
+        navigate("/admin/dashboard");
+      } else {
+        navigate("/member/dashboard");
+      }
+    } catch (error) {
+      alert(error.response?.data?.message || "Login gagal");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
-      <div className="flex items-center bg-white rounded-lg px-4 py-3 shadow-sm">
-        <InputForm type={"email"} placeholder={"Masukkan email"} id={"email"} />
-      </div>
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <InputForm
+        type="email"
+        id="email"
+        placeholder="Masukkan email"
+        value={form.email}
+        onChange={handleChange}
+        icon={<Mail size={18} />}
+        required
+      />
 
-      <div className="flex items-center bg-white rounded-lg px-4 py-3 shadow-sm">
-        <InputForm
-          type={"password"}
-          placeholder={"Masukkan password"}
-          id={"password"}
-        />
-      </div>
-
-      <div className="flex justify-between items-center text-xs text-gray-300">
-        <label className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            checked={remember}
-            onChange={() => setRemember(!remember)}
-            className="accent-emerald-500"
-          />
-          Remember me
-        </label>
-
-        <button
-          type="button"
-          className="italic hover:text-white transition bg-none"
-        >
-          Forgot Password?
-        </button>
-      </div>
+      <InputForm
+        type={showPassword ? "text" : "password"}
+        id="password"
+        placeholder="Masukkan password"
+        value={form.password}
+        onChange={handleChange}
+        icon={<Lock size={18} />}
+        rightIcon={showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+        onRightIconClick={() => setShowPassword(!showPassword)}
+        required
+      />
 
       <Button type="submit" fullWidth size="md">
-        LOGIN
+        {loading ? "Loading..." : "LOGIN"}
       </Button>
     </form>
   );
